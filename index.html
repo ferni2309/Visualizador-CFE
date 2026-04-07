@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visor de Recibo CFE</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f6f8; color: #1a1a1a; min-height: 100vh; }
+ 
+  .top-bar { background: #006633; color: white; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+  .top-bar .logo { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .top-bar .subtitle { font-size: 13px; opacity: 0.8; }
+ 
+  .upload-zone { max-width: 680px; margin: 48px auto; padding: 0 16px; }
+  .drop-area { border: 2px dashed #b0bec5; border-radius: 12px; padding: 48px 24px; text-align: center; background: white; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+  .drop-area:hover, .drop-area.dragover { border-color: #006633; background: #f0faf5; }
+  .drop-icon { font-size: 40px; margin-bottom: 12px; }
+  .drop-area h2 { font-size: 17px; font-weight: 600; color: #1a1a1a; margin-bottom: 6px; }
+  .drop-area p { font-size: 14px; color: #666; margin-bottom: 20px; }
+  .btn-upload { display: inline-block; background: #006633; color: white; border: none; border-radius: 8px; padding: 10px 24px; font-size: 14px; font-weight: 500; cursor: pointer; }
+  .btn-upload:hover { background: #005229; }
+  #file-input { display: none; }
+ 
+  .result { max-width: 860px; margin: 0 auto 48px; padding: 0 16px; display: none; }
+ 
+  .recibo { background: white; border-radius: 12px; border: 1px solid #e0e0e0; overflow: hidden; }
+ 
+  .recibo-header { background: #006633; color: white; padding: 20px 24px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .recibo-header .cfe-label { font-size: 11px; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .recibo-header .cfe-name { font-size: 18px; font-weight: 700; }
+  .recibo-header .total-box { text-align: right; }
+  .recibo-header .total-label { font-size: 11px; opacity: 0.75; text-transform: uppercase; }
+  .recibo-header .total-amount { font-size: 36px; font-weight: 700; line-height: 1; }
+  .recibo-header .total-letras { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+ 
+  .recibo-body { padding: 0; }
+ 
+  .section { padding: 20px 24px; border-bottom: 1px solid #f0f0f0; }
+  .section:last-child { border-bottom: none; }
+  .section-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 14px; }
+ 
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+ 
+  .info-label { font-size: 11px; color: #888; margin-bottom: 2px; }
+  .info-value { font-size: 14px; font-weight: 500; color: #1a1a1a; }
+ 
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .badge-green { background: #e6f4ee; color: #005229; }
+  .badge-orange { background: #fff3e0; color: #e65100; }
+  .badge-red { background: #fde8e8; color: #b71c1c; }
+ 
+  .stat-card { background: #f8f9fa; border-radius: 8px; padding: 14px 16px; text-align: center; }
+  .stat-card .stat-val { font-size: 22px; font-weight: 700; color: #006633; }
+  .stat-card .stat-label { font-size: 11px; color: #888; margin-top: 2px; }
+ 
+  .conceptos-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .conceptos-table th { text-align: left; font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; padding: 6px 0; border-bottom: 1px solid #eee; }
+  .conceptos-table td { padding: 9px 0; border-bottom: 1px solid #f5f5f5; }
+  .conceptos-table td:last-child { text-align: right; font-weight: 500; }
+  .conceptos-table tr.total-row td { font-weight: 700; font-size: 15px; border-top: 2px solid #006633; border-bottom: none; padding-top: 12px; color: #006633; }
+  .conceptos-table tr.sub-row td { color: #555; }
+  .conceptos-table tr.neg-row td:last-child { color: #c0392b; }
+ 
+  .lecturas-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .lecturas-table th { background: #f0faf5; text-align: left; font-size: 11px; color: #006633; font-weight: 600; padding: 8px 12px; }
+  .lecturas-table td { padding: 9px 12px; border-bottom: 1px solid #f0f0f0; }
+  .lecturas-table td:not(:first-child) { text-align: right; }
+  .lecturas-table tr:last-child td { border-bottom: none; }
+ 
+  .historial-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 6px; }
+  .hist-item { background: #f8f9fa; border-radius: 6px; padding: 8px 4px; text-align: center; }
+  .hist-item .h-period { font-size: 10px; color: #999; margin-bottom: 3px; }
+  .hist-item .h-kwh { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+  .hist-item.current { background: #e6f4ee; }
+  .hist-item.current .h-kwh { color: #006633; }
+ 
+  .chart-wrap { margin-top: 12px; display: flex; align-items: flex-end; gap: 3px; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .bar { width: 100%; background: #b2dfdb; border-radius: 3px 3px 0 0; transition: background 0.2s; min-height: 4px; }
+  .bar.current { background: #006633; }
+  .bar-label { font-size: 9px; color: #999; text-align: center; white-space: nowrap; }
+ 
+  .alertas { display: flex; flex-direction: column; gap: 8px; }
+  .alerta { display: flex; gap: 10px; padding: 10px 14px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
+  .alerta-warn { background: #fff8e1; border-left: 3px solid #f9a825; }
+  .alerta-info { background: #e8f4f8; border-left: 3px solid #0288d1; }
+  .alerta-ok { background: #e8f5e9; border-left: 3px solid #2e7d32; }
+  .alerta-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+ 
+  .folio-bar { background: #f8f9fa; padding: 1px 24px; display: flex; gap: 24px; flex-wrap: wrap; border-top: 1px solid #eee; font-size: 12px; color: #888; }
+  .folio-bar span strong { color: #1a1a1a; }
+ 
+  .limite-box { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .limite-box .lim-icon { font-size: 22px; }
+  .limite-box .lim-text { font-size: 13px; }
+  .limite-box .lim-fecha { font-size: 16px; font-weight: 700; color: #e65100; }
+ 
+  .corte-box { background: #fde8e8; border: 1px solid #ef9a9a; border-radius: 8px; padding: 12px 16px; display: flex; align-items: center; gap: 12px;}
+  .corte-box .lim-icon { font-size: 22px; }
+  .corte-box .lim-text { font-size: 13px; }
+  .corte-box .lim-fecha { font-size: 16px; font-weight: 700; color: #b71c1c; }
+ 
+  @media (max-width: 600px) {
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+    .recibo-header { flex-direction: column; }
+    .recibo-header .total-box { text-align: left; }
+  }
+
+  @media print {
+    /* Ocultar elementos innecesarios al imprimir */
+    .top-bar, 
+    button, 
+    .upload-zone {
+        display: none !important;
+    }
+
+    /* Ajustar el contenedor para que ocupe toda la página */
+    body {
+        background: white;
+    }
+    .result {
+        margin: 0;
+        padding: 0;
+        display: block !important;
+    }
+    .recibo {
+        border: none;
+        box-shadow: none;
+    }
+}
+</style>
+</head>
+<body>
+ 
+<div class="top-bar">
+  <div>
+    <div class="logo">⚡ Visor CFE</div>
+    <div class="subtitle">Visualizador de recibos XML — Comisión Federal de Electricidad</div>
+  </div>
+</div>
+ 
+<div class="upload-zone" id="upload-zone">
+  <div class="drop-area" id="drop-area">
+    <div class="drop-icon">📄</div>
+    <h2>Carga tu XML de CFE</h2>
+    <p>Arrastra aquí el archivo XML de tu recibo de luz, o haz clic para buscarlo</p>
+    <label class="btn-upload" for="file-input">Seleccionar archivo XML</label>
+    <input type="file" id="file-input" accept=".xml,text/xml,application/xml">
+  </div>
+</div>
+ 
+<div class="result" id="result"></div>
+ 
+<script>
+const dropArea = document.getElementById('drop-area');
+const fileInput = document.getElementById('file-input');
+const resultDiv = document.getElementById('result');
+const uploadZone = document.getElementById('upload-zone');
+ 
+dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('dragover'); });
+dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
+dropArea.addEventListener('drop', e => { e.preventDefault(); dropArea.classList.remove('dragover'); handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+ 
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => processXML(e.target.result);
+  reader.readAsText(file, 'UTF-8');
+}
+ 
+function g(doc, tag, attr) {
+  const el = doc.querySelector(tag);
+  return el ? (attr ? el.getAttribute(attr) : el.textContent.trim()) : '';
+}
+function ga(doc, selector, attr) {
+  const el = doc.querySelector(selector);
+  return el ? (attr ? el.getAttribute(attr) : el.textContent.trim()) : '';
+}
+function getText(doc, tagName) {
+  const tags = doc.getElementsByTagName(tagName);
+  return tags.length ? tags[0].textContent.trim() : '';
+}
+ 
+function fmt(n) {
+  const num = parseFloat(n);
+  if (isNaN(num)) return n;
+  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(num);
+}
+function fmtNum(n) {
+  const num = parseInt(n);
+  if (isNaN(num)) return n;
+  return new Intl.NumberFormat('es-MX').format(num);
+}
+ 
+function processXML(xmlText) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xmlText, 'text/xml');
+ 
+  const comprobante = doc.querySelector('Comprobante');
+  if (!comprobante) { alert('No se reconoció el formato XML de CFE.'); return; }
+ 
+  const nombre = getText(doc, 'NOMBRE') || ga(doc, 'Receptor', 'Nombre') || '—';
+  const rfc = ga(doc, 'Receptor', 'Rfc') || getText(doc, 'RFC') || '—';
+  const noServicio = getText(doc, 'RPU') || '—';
+  const cuenta = getText(doc, 'NumCta') || '—';
+  const tarifa = getText(doc, 'TARIFA') || '—';
+  const medidor = getText(doc, 'NUMMED1') || '—';
+  const periodo = (getText(doc, 'FECDESDE') || '—') + ' al ' + (getText(doc, 'FECHASTA') || '—');
+  const fecLimite = getText(doc, 'FECLIMITE') || '—';
+  const fecCorte = getText(doc, 'FECORTE') || '—';
+  const direccion = getText(doc, 'DIRECC') || '—';
+  const ciudad = getText(doc, 'NOMPOB') + ', ' + getText(doc, 'NOMEST');
+  const cp = getText(doc, 'CODIGO_POSTAL') || '—';
+  const total = getText(doc, 'IMPTOTAL') || comprobante.getAttribute('Total') || '—';
+  const totalLetras = getText(doc, 'MontoAPagarEnLetras') || '—';
+  const subtotal = comprobante.getAttribute('SubTotal') || '—';
+  const dias = getText(doc, 'Dias') || '—';
+  const consumo = getText(doc, 'CONSUMO_R') || '—';
+  const consumoDiario = getText(doc, 'ConsumoDiario') || '—';
+  const precioDiario = getText(doc, 'PrecioDiario') || '—';
+  const demanda = getText(doc, 'DEMANDA') || '—';
+  const kvarh = getText(doc, 'KVARH') || '—';
+  const facPot = getText(doc, 'FacPot') || '—';
+  const cargaConectada = getText(doc, 'CARGA_CONECTADA') || '—';
+  const cargaContratada = getText(doc, 'CARGA_CONTRATADA') || '—';
+  const folio = comprobante.getAttribute('Folio') || '—';
+  const serie = comprobante.getAttribute('Serie') || '—';
+  const fecha = (comprobante.getAttribute('Fecha') || '').replace('T', ' ');
+  const uso = getText(doc, 'Uso') || '—';
+  const region = getText(doc, 'REGION') || '—';
+  const hilos = getText(doc, 'HILOS') || '—';
+  const multiplicador = 'x1';
+ 
+  const lecAnt1 = getText(doc, 'LECANT1'); const lecAct1 = getText(doc, 'LECACT1'); const dif1 = getText(doc, 'DIFLEC1');
+  const lecAct4 = getText(doc, 'LECACT4'); const dif4 = getText(doc, 'DIFLEC4');
+  const lecAnt5 = getText(doc, 'LECANT5'); const lecAct5 = getText(doc, 'LECACT5'); const dif5 = getText(doc, 'DIFLEC5');
+ 
+  const imp1 = getText(doc, 'Importe1'); const imp2 = getText(doc, 'Importe2'); const imp3 = getText(doc, 'Importe3');
+  const imp4 = getText(doc, 'Importe4'); const imp5 = getText(doc, 'Importe5');
+  const imp6 = getText(doc, 'Importe6'); const imp7 = getText(doc, 'Importe7'); const imp8 = getText(doc, 'Importe8');
+ 
+  const sdoAnt = getText(doc, 'SDOANT') || imp6 || '0';
+  const pagoAnt = getText(doc, 'PAGOANT') || imp7 || '0';
+ 
+  const msg1 = getText(doc, 'Mensaje1'); const msg2 = getText(doc, 'Mensaje2');
+  const msg3 = getText(doc, 'Mensaje3'); const msg6 = getText(doc, 'Mensaje6');
+  const obs3 = getText(doc, 'Observacion3');
+  const inf5 = getText(doc, 'InfImportante5');
+  const inf4 = getText(doc, 'InfImportante4');
+ 
+  const clvReg = getText(doc, 'CLV_REG') || '';
+  const cuotaE = getText(doc, 'CUOTAE') || '';
+  const cuotaC = getText(doc, 'CUOTAE_CONSUMIDA') || '';
+ 
+  const factAnt = [];
+  const kwhs = [];
+  const facts = [];
+  for (let i = 1; i <= 11; i++) {
+    const fa = getText(doc, `FacturaAnt${i}`);
+    const kw = getText(doc, `Impo_kWh${i}`);
+    const fc = getText(doc, `Impo_Fact${i}`);
+    if (fa) { factAnt.push(fa); kwhs.push(parseInt(kw) || 0); facts.push(parseInt(fc) || 0); }
+  }
+ 
+  const histData = [];
+  for (let i = 1; i <= 24; i++) {
+    const yr = getText(doc, `YEARH${i}`);
+    const mm = getText(doc, `MESH${i}`);
+    const con = getText(doc, `CONSUMOH${i}`);
+    if (yr && yr !== '0000' && con) histData.push({ yr, mm: String(mm).padStart(2,'0'), con: parseInt(con) });
+  }
+ 
+  const facPotNum = parseFloat(facPot);
+  const facPotBadge = facPotNum >= 90 ? `<span class="badge badge-green">${facPot}%</span>` :
+                      facPotNum >= 80 ? `<span class="badge badge-orange">${facPot}%</span>` :
+                      `<span class="badge badge-red">${facPot}%</span>`;
+ 
+  const maxHist = Math.max(...histData.map(h => h.con), 1);
+ 
+  const histBars = histData.slice(-13).map((h, i, arr) => {
+    const isCurrent = i === arr.length - 1;
+    const pct = Math.round((h.con / maxHist) * 100);
+    return `<div class="bar-wrap">
+      <div class="bar${isCurrent ? ' current' : ''}" style="height:${Math.max(pct,3)}%;" title="${h.con} kWh"></div>
+      <div class="bar-label">${h.mm}/${h.yr.slice(2)}</div>
+    </div>`;
+  }).join('');
+ 
+  const histGrid = histData.slice(-13).map((h, i, arr) => {
+    const isCurrent = i === arr.length - 1;
+    return `<div class="hist-item${isCurrent ? ' current' : ''}">
+      <div class="h-period">${h.mm}/${h.yr.slice(2)}</div>
+      <div class="h-kwh">${fmtNum(h.con)}</div>
+    </div>`;
+  }).join('');
+ 
+  const alertasHTML = [];
+  if (msg1) alertasHTML.push(`<div class="alerta alerta-warn"><span class="alerta-icon">⚠️</span><span>${msg1}</span></div>`);
+  if (inf5) alertasHTML.push(`<div class="alerta alerta-warn"><span class="alerta-icon">⚡</span><span>${inf5}</span></div>`);
+  if (inf4) alertasHTML.push(`<div class="alerta alerta-info"><span class="alerta-icon">💡</span><span>${inf4}</span></div>`);
+  if (obs3) alertasHTML.push(`<div class="alerta alerta-ok"><span class="alerta-icon">🌱</span><span>${obs3}</span></div>`);
+  if (msg2) alertasHTML.push(`<div class="alerta alerta-ok"><span class="alerta-icon">🌍</span><span>${msg2}</span></div>`);
+  if (msg6) alertasHTML.push(`<div class="alerta alerta-info"><span class="alerta-icon">📞</span><span>${msg6}</span></div>`);
+ 
+  const html = `
+<div class="recibo">
+  <div class="recibo-header">
+    <div>
+      <div class="cfe-label">Comisión Federal de Electricidad</div>
+      <div class="cfe-name">${nombre}</div>
+      <div style="font-size:13px;opacity:0.8;margin-top:4px;">${direccion}<br>${ciudad} — C.P. ${cp}</div>
+    </div>
+    <div class="total-box">
+      <div class="total-label">Total a pagar</div>
+      <div class="total-amount">$${parseInt(total).toLocaleString('es-MX')}</div>
+      <div class="total-letras">${totalLetras}</div>
+    </div>
+  </div>
+ 
+  <div class="section">
+    <div class="grid-2" style="margin-bottom:16px;">
+      <div class="limite-box">
+        <div class="lim-icon">📅</div>
+        <div class="lim-text">
+          <div style="font-size:11px;color:#666;">Fecha límite de pago</div>
+          <div class="lim-fecha">${fecLimite}</div>
+        </div>
+      </div>
+      <div class="corte-box">
+        <div class="lim-icon">🔌</div>
+        <div class="lim-text">
+          <div style="font-size:11px;color:#666;">Corte a partir de</div>
+          <div class="lim-fecha">${fecCorte}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <div class="section">
+    <div class="section-title">Datos del servicio</div>
+    <div class="grid-4">
+      <div class="info-item"><div class="info-label">No. de servicio</div><div class="info-value">${noServicio}</div></div>
+      <div class="info-item"><div class="info-label">Cuenta</div><div class="info-value" style="font-size:12px;">${cuenta}</div></div>
+      <div class="info-item"><div class="info-label">RFC</div><div class="info-value">${rfc}</div></div>
+      <div class="info-item"><div class="info-label">Tarifa</div><div class="info-value">${tarifa}</div></div>
+      <div class="info-item"><div class="info-label">Medidor</div><div class="info-value">${medidor}</div></div>
+      <div class="info-item"><div class="info-label">No. hilos</div><div class="info-value">${hilos}</div></div>
+      <div class="info-item"><div class="info-label">Uso</div><div class="info-value" style="font-size:12px;">${uso}</div></div>
+      <div class="info-item"><div class="info-label">Región</div><div class="info-value">${region}</div></div>
+    </div>
+    <div style="margin-top:12px;">
+      <div class="info-label">Periodo facturado</div>
+      <div class="info-value">${periodo}</div>
+    </div>
+  </div>
+ 
+  <div class="section">
+    <div class="section-title">Consumo del periodo</div>
+    <div class="grid-4">
+      <div class="stat-card"><div class="stat-val">${fmtNum(consumo)}</div><div class="stat-label">kWh consumidos</div></div>
+      <div class="stat-card"><div class="stat-val">${dias}</div><div class="stat-label">Días del periodo</div></div>
+      <div class="stat-card"><div class="stat-val">${parseFloat(consumoDiario).toFixed(1)}</div><div class="stat-label">kWh/día promedio</div></div>
+      <div class="stat-card"><div class="stat-val">${demanda}</div><div class="stat-label">Demanda máx. kW</div></div>
+      <div class="stat-card"><div class="stat-val">${fmtNum(kvarh)}</div><div class="stat-label">kVArh reactiva</div></div>
+      <div class="stat-card"><div class="stat-val">${facPotBadge}</div><div class="stat-label">Factor de potencia</div></div>
+      <div class="stat-card"><div class="stat-val">${cargaConectada}</div><div class="stat-label">Carga conectada kW</div></div>
+      <div class="stat-card"><div class="stat-val">${cargaContratada}</div><div class="stat-label">Carga contratada kW</div></div>
+    </div>
+  </div>
+ 
+  <div class="section">
+    <div class="section-title">Lecturas del medidor</div>
+    <table class="lecturas-table">
+      <thead>
+        <tr><th>Concepto</th><th>Lectura anterior</th><th>Lectura actual</th><th>Diferencia</th><th>Total</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>kWh</strong> — Energía</td><td>${fmtNum(lecAnt1)}</td><td>${fmtNum(lecAct1)}</td><td>${fmtNum(dif1)}</td><td>${fmtNum(dif1)}</td></tr>
+        <tr><td><strong>kW</strong> — Demanda</td><td>0</td><td>${fmtNum(lecAct4)}</td><td>${fmtNum(dif4)}</td><td>${fmtNum(dif4)}</td></tr>
+        <tr><td><strong>kVArh</strong> — Reactiva</td><td>${fmtNum(lecAnt5)}</td><td>${fmtNum(lecAct5)}</td><td>${fmtNum(dif5)}</td><td>${fmtNum(dif5)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+ 
+  <div class="section">
+    <div class="section-title">Desglose del importe</div>
+    <table class="conceptos-table">
+      <thead><tr><th>Concepto</th><th>Importe (MXN)</th></tr></thead>
+      <tbody>
+        <tr class="sub-row"><td>Energía (1,031 kWh × $0.76)</td><td>${fmt(imp1)}</td></tr>
+        <tr class="sub-row"><td>2% Baja Tensión</td><td>${fmt(imp2)}</td></tr>
+        <tr class="sub-row"><td>Cargo Factor de Potencia</td><td>${fmt(imp3)}</td></tr>
+        <tr class="sub-row"><td>I.V.A 0%</td><td>${fmt(imp4 || '0')}</td></tr>
+        <tr><td><strong>Facturación del periodo</strong></td><td><strong>${fmt(imp5)}</strong></td></tr>
+        <tr class="sub-row"><td>Adeudo anterior</td><td>${fmt(sdoAnt)}</td></tr>
+        <tr class="sub-row neg-row"><td>Su pago</td><td>${fmt(pagoAnt)}</td></tr>
+        <tr class="total-row"><td>Total a pagar</td><td>${fmt(imp8 || total)}</td></tr>
+      </tbody>
+    </table>
+  </div>
+ 
+  ${histData.length ? `
+  <div class="section">
+    <div class="section-title">Historial de consumo (kWh)</div>
+    <div class="chart-wrap">${histBars}</div>
+    <div class="historial-grid" style="margin-top:14px;">${histGrid}</div>
+  </div>` : ''}
+ 
+  ${clvReg ? `
+  <div class="section">
+    <div class="section-title">Programa PEUA (Riego Agrícola)</div>
+    <div class="grid-3">
+      <div class="info-item"><div class="info-label">Clave de registro</div><div class="info-value" style="font-size:12px;">${clvReg}</div></div>
+      <div class="info-item"><div class="info-label">Cuota energética anual</div><div class="info-value">${fmtNum(cuotaE)} kWh</div></div>
+      <div class="info-item"><div class="info-label">Cuota consumida (acumulado)</div><div class="info-value">${fmtNum(cuotaC)} kWh</div></div>
+    </div>
+  </div>` : ''}
+ 
+  ${alertasHTML.length ? `
+  <div class="section">
+    <div class="section-title">Avisos y mensajes</div>
+    <div class="alertas">${alertasHTML.join('')}</div>
+  </div>` : ''}
+ 
+  <div class="folio-bar">
+    <span>Folio: <strong>${serie}-${folio}</strong></span>
+    <span>Fecha emisión: <strong>${fecha}</strong></span>
+    <span>RFC emisor: <strong>CFE370814QI0</strong></span>
+    <span>Tipo: <strong>CFDI v4.0 — PPD</strong></span>
+  </div>
+</div>
+ 
+<div style="text-align:center;margin-top:16px;display:flex;justify-content:center;gap:12px;">
+    <button onclick="window.print()" style="background:#006633;border:none;border-radius:8px;padding:8px 20px;cursor:pointer;font-size:13px;color:white;font-weight:500;">
+        🖨️ Imprimir Recibo
+    </button>
+  <button onclick="resetVisor()" style="background:none;border:1px solid #ccc;border-radius:8px;padding:8px 20px;cursor:pointer;font-size:13px;color:#555;">⬆ Cargar otro XML</button>
+</div>
+`;
+ 
+  resultDiv.innerHTML = html;
+  resultDiv.style.display = 'block';
+  uploadZone.style.display = 'none';
+}
+ 
+function resetVisor() {
+  resultDiv.style.display = 'none';
+  uploadZone.style.display = 'block';
+  fileInput.value = '';
+}
+</script>
+</body>
+</html>
