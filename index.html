@@ -105,6 +105,7 @@
  
   @media (max-width: 600px) {
     .grid-4 { grid-template-columns: 1fr 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
     .grid-3 { grid-template-columns: 1fr 1fr; }
     .recibo-header { flex-direction: column; }
     .recibo-header .total-box { text-align: left; }
@@ -354,7 +355,7 @@ function processXML(xmlText) {
       <div class="info-item"><div class="info-label">Uso</div><div class="info-value" style="font-size:12px;">${uso}</div></div>
       <div class="info-item"><div class="info-label">Región</div><div class="info-value">${region}</div></div>
     </div>
-    <div style="margin-top:12px;">
+    <div class="grid-2" style="margin-top:12px;">
       <div class="info-label">Periodo facturado</div>
       <div class="info-value">${periodo}</div>
       <div class="info-item"><div class="info-label">RMU</div><div class="info-value">${rmu}</div></div>
