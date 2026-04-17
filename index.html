@@ -211,6 +211,7 @@ function processXML(xmlText) {
   const tarifa = getText(doc, 'TARIFA') || '—';
   const medidor = getText(doc, 'NUMMED1') || '—';
   const periodo = (getText(doc, 'FECDESDE') || '—') + ' al ' + (getText(doc, 'FECHASTA') || '—');
+  const rmu = getText(doc, 'RMU') || '—';
   const fecLimite = getText(doc, 'FECLIMITE') || '—';
   const fecCorte = getText(doc, 'FECORTE') || '—';
   const direccion = getText(doc, 'DIRECC') || '—';
@@ -356,6 +357,7 @@ function processXML(xmlText) {
     <div style="margin-top:12px;">
       <div class="info-label">Periodo facturado</div>
       <div class="info-value">${periodo}</div>
+      <div class="info-item"><div class="info-label">RMU</div><div class="info-value">${rmu}</div></div>
     </div>
   </div>
  
